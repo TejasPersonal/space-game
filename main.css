@@ -1,0 +1,24 @@
+* {
+    padding: 0;
+    margin: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: black;
+}
+
+#game-screen {
+    width: 100%;
+    height: 100vh;
+    background-color: black;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    display: block;
+}
+
+.thing {
+    position: absolute;
+    background-color: white;
+}
