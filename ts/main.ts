@@ -1,18 +1,3 @@
-import { Thing } from "./thing.js"
-
-const game_screen = document.getElementById('game-screen')!
-const player = new Thing('player', 4)
-
-let keys: { [key: string]: boolean } = {}
-
-window.onkeyup = function (event) {
-    keys[event.key] = false
-}
-
-window.onkeydown = function (event) {
-    keys[event.key] = true
-}
-
 class Vector {
     x: number
     y: number
@@ -23,46 +8,143 @@ class Vector {
     }
 }
 
+enum Shapes {
+    Circle
+}
+
 class Physics {
+    public mass: number
+    public force: Vector
     private acceleration: Vector
     private velocity: Vector
-    private mass: number
+    private position: Vector
 
     constructor (mass: number) {
         this.mass = mass
+        this.force = new Vector()
         this.acceleration = new Vector()
         this.velocity = new Vector()
+        this.position = new Vector()
     }
 
-    apply_force(force: Vector) {
-        this.acceleration.x = force.x / this.mass
-        this.acceleration.y = force.y / this.mass
-    }
+    nextPosition (dt: number): Vector {
+        this.acceleration.x = this.force.x / this.mass
+        this.acceleration.y = this.force.y / this.mass
 
-    calculate_velocity(): Vector {
-        console.log(this.acceleration.x)
-        this.velocity.x += this.acceleration.x
-        this.velocity.y += this.acceleration.y
-        this.acceleration.x = 0
-        this.acceleration.y = 0
-        return this.velocity
+        this.velocity.x += this.acceleration.x * dt
+        this.velocity.y += this.acceleration.y * dt
+
+        this.position.x += this.velocity.x * dt
+        this.position.y += this.velocity.y * dt
+
+        this.force.x = 0
+        this.force.y = 0
+
+        return this.position
     }
 }
 
-let physics = new Physics(1)
+class Thing {
+    public element: HTMLElement
 
-let interval = 0
-let last_time = performance.now()
+    constructor (width: number, height: number, x: number, y: number) {
+        this.element = document.createElement('thing')
 
-setInterval(() => {
-    const current_time = performance.now()
-    const delta_time = current_time - last_time
-    last_time = current_time
+        this.element.style.position = 'absolute'
+        
+        this.element.style.left = x + '%'
+        this.element.style.bottom = y + '%'
+
+        this.element.style.aspectRatio = (width / height).toString()
+        this.element.style.height = height + '%'
+    }
+
+    get x (): number {
+        return parseFloat(this.element.style.left)
+    }
     
-    const screen_rect = game_screen.getBoundingClientRect()
-    const screen_aspect_ratio = screen_rect.width / screen_rect.height
+    get y (): number {
+        return parseFloat(this.element.style.bottom)
+    }
+
+    set x (value: number) {
+        this.element.style.left = value + '%'
+    }
+
+    set y (value: number) {
+        this.element.style.bottom = value + '%'
+    }
+
+    get aspect_ratio (): number {
+        return parseFloat(this.element.style.aspectRatio)
+    }
+
+    private set aspect_ratio (value: number) {
+        this.element.style.aspectRatio = value.toString()
+    }
     
-    let force_mag = 0.0001
+    get width (): number {
+        return this.height * this.aspect_ratio
+    }
+
+    get height (): number {
+        return parseFloat(this.element.style.height)
+    }
+
+    set width (value: number) {
+        this.aspect_ratio = value / this.height
+    }
+
+    set height (value: number) {
+        this.aspect_ratio = this.width / value
+        this.element.style.height = value + '%'
+    }
+}
+
+class GameBox {
+    private element: Element
+
+    constructor () {
+        this.element = document.querySelector('game-box')!
+    }
+
+    add (thing: Thing) {
+        this.element.appendChild(thing.element)
+    }
+
+    remove (thing: Thing) {
+        this.element.removeChild(thing.element)
+    }
+
+    get rectangle (): DOMRect {
+        return this.element.getBoundingClientRect()
+    }
+}
+
+let keys: { [key: string]: boolean } = {}
+
+window.onkeyup = (event: KeyboardEvent) => {
+    keys[event.key] = false
+}
+
+window.onkeydown = (event: KeyboardEvent) => {
+    keys[event.key] = true
+}
+
+let game_box = new GameBox()
+
+let player = new Thing(6, 6, 0, 0)
+game_box.add(player)
+let physics_object = new Physics(1)
+
+let last_time = 0
+
+function gameLoop(time: number) {
+    const dt = time - last_time
+    last_time = time
+    //
+
+    let force_mag = 10
     let force = new Vector()
 
     if (keys["ArrowRight"]) {
@@ -78,13 +160,22 @@ setInterval(() => {
         force.y -= force_mag
     }
 
-    physics.apply_force(force)
-    let vel = physics.calculate_velocity()
-    
-    player.x += vel.x * delta_time
-    player.y += vel.y * delta_time * screen_aspect_ratio
+    physics_object.force.x = force.x
+    physics_object.force.y = force.y
 
-}, interval)
+    let screen = game_box.rectangle
+    let screen_aspect_ratio = screen.width / screen.height
 
-// vel.y * delta_time * screen_aspect_ratio
-// vel.x * delta_time
+    function scalePosition(position: Vector): Vector {
+        return new Vector(position.x, position.y * screen_aspect_ratio)
+    }
+
+    let player_position = scalePosition(physics_object.nextPosition(dt / 1000))
+    player.x = player_position.x
+    player.y = player_position.y
+
+    //
+    requestAnimationFrame(gameLoop)
+}
+
+requestAnimationFrame(gameLoop)
