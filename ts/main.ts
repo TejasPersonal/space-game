@@ -1,4 +1,4 @@
-class Vector {
+class Vector2D {
     x: number
     y: number
 
@@ -6,28 +6,104 @@ class Vector {
         this.x = x
         this.y = y
     }
+
+    add (other: Vector2D) {
+        this.x += other.x
+        this.y += other.y
+    }
+
+    static add (a: Vector2D, b: Vector2D) {
+        return new Vector2D(a.x + b.x, a.y + b.y)
+    }
+
+    sub (other: Vector2D) {
+        this.x -= other.x
+        this.y -= other.y
+    }
+
+    static sub (a: Vector2D, b: Vector2D) {
+        return new Vector2D(a.x - b.x, a.y - b.y)
+    }
+
+    mul (other: Vector2D) {
+        this.x *= other.x
+        this.y *= other.y
+    }
+
+    static mul (a: Vector2D, b: Vector2D) {
+        return new Vector2D(a.x * b.x, a.y * b.y)
+    }
+
+    div (other: Vector2D) {
+        this.x /= other.x
+        this.y /= other.y
+    }
+
+    static div (a: Vector2D, b: Vector2D) {
+        return new Vector2D(a.x / b.x, a.y / b.y)
+    }
+
+    scale (scaler: number) {
+        this.x *= scaler
+        this.y *= scaler
+    }
+
+    static scale (vector: Vector2D, scaler: number): Vector2D {
+        return new Vector2D (vector.x * scaler, vector.y * scaler)
+    }
+
+    dot (other: Vector2D) {
+        return this.x * other.x + this.y * other.y
+    }
+
+    magnitude () {
+        return Math.sqrt(this.x**2 + this.y**2)
+    }
+
+    distance (other: Vector2D) {
+        return Math.sqrt (
+            (other.x - this.x) ** 2
+                +
+            (other.y - this.y) ** 2
+        )
+    }
+
+    normalize () {
+        const mag = this.magnitude()
+        this.x /= mag
+        this.y /= mag
+    }
+
+    normal (): Vector2D {
+        const mag = this.magnitude()
+        return new Vector2D(this.x / mag, this.y / mag)
+    }
 }
 
-enum Shapes {
-    Circle
+class Rectangle {
+    width : number
+    height: number
+
+    constructor (width: number, height: number) {
+        this.width = width
+        this.height = height
+    }
 }
 
-class Physics {
-    public mass: number
-    public force: Vector
-    private acceleration: Vector
-    private velocity: Vector
-    private position: Vector
+// dt means they are not made for predictions
+
+class Particle {
+    mass: number
+    force: Vector2D = new Vector2D()
+    acceleration: Vector2D = new Vector2D()
+    velocity: Vector2D = new Vector2D()
+    position: Vector2D = new Vector2D()
 
     constructor (mass: number) {
         this.mass = mass
-        this.force = new Vector()
-        this.acceleration = new Vector()
-        this.velocity = new Vector()
-        this.position = new Vector()
     }
 
-    nextPosition (dt: number): Vector {
+    integrate (dt: number) {
         this.acceleration.x = this.force.x / this.mass
         this.acceleration.y = this.force.y / this.mass
 
@@ -39,142 +115,217 @@ class Physics {
 
         this.force.x = 0
         this.force.y = 0
-
-        return this.position
     }
 }
 
-class Thing {
-    public element: HTMLElement
+class Item<T> {
+    value: T
+    _next: Item<T> | null = null
+    _previous: Item<T> | null = null
 
-    constructor (width: number, height: number, x: number, y: number) {
-        this.element = document.createElement('thing')
-
-        this.element.style.position = 'absolute'
-        
-        this.element.style.left = x + '%'
-        this.element.style.bottom = y + '%'
-
-        this.element.style.aspectRatio = (width / height).toString()
-        this.element.style.height = height + '%'
-    }
-
-    get x (): number {
-        return parseFloat(this.element.style.left)
-    }
-    
-    get y (): number {
-        return parseFloat(this.element.style.bottom)
-    }
-
-    set x (value: number) {
-        this.element.style.left = value + '%'
-    }
-
-    set y (value: number) {
-        this.element.style.bottom = value + '%'
-    }
-
-    get aspect_ratio (): number {
-        return parseFloat(this.element.style.aspectRatio)
-    }
-
-    private set aspect_ratio (value: number) {
-        this.element.style.aspectRatio = value.toString()
-    }
-    
-    get width (): number {
-        return this.height * this.aspect_ratio
-    }
-
-    get height (): number {
-        return parseFloat(this.element.style.height)
-    }
-
-    set width (value: number) {
-        this.aspect_ratio = value / this.height
-    }
-
-    set height (value: number) {
-        this.aspect_ratio = this.width / value
-        this.element.style.height = value + '%'
+    constructor (value: T) {
+        this.value = value
     }
 }
 
-class GameBox {
-    private element: Element
+class LinkedList<T> {
+    private first: Item<T> | null = null
 
-    constructor () {
-        this.element = document.querySelector('game-box')!
+    add (value: T): Item<T> {
+        let item = new Item(value)
+        if (this.first) {
+            this.first._previous = item
+            item._next = this.first
+            this.first = item
+        }
+        else {
+            this.first = item
+        }
+        return item
     }
 
-    add (thing: Thing) {
-        this.element.appendChild(thing.element)
+    remove (item: Item<T>) {
+        if (item === this.first) {
+            this.first = item._next
+        }
+
+        if (item._previous) {
+            item._previous._next = item._next
+        }
+        if (item._next) {
+            item._next._previous = item._previous
+        }
+
+        item._previous = null
+        item._next = null
     }
 
-    remove (thing: Thing) {
-        this.element.removeChild(thing.element)
-    }
+    [Symbol.iterator](): Iterator<Item<T>> {
+        let current: Item<T> | null = this.first
 
-    get rectangle (): DOMRect {
-        return this.element.getBoundingClientRect()
+        return {
+            next(): IteratorResult<Item<T>> {
+                if (current) {
+                    const value = current
+                    current = current._next
+                    return { value, done: false }
+                }
+                return { value: null, done: true }
+            }
+        }
     }
 }
 
-let keys: { [key: string]: boolean } = {}
+class PhysicalCircle extends Particle {
+    radius: number
 
-window.onkeyup = (event: KeyboardEvent) => {
-    keys[event.key] = false
+    constructor (radius: number, mass: number) {
+        super (mass)
+        this.radius = radius
+    }
 }
+
+const display: HTMLElement = document.getElementById('game')!
+
+class DisplayCircle extends PhysicalCircle {
+    element: HTMLElement
+
+    constructor (radius: number, mass: number) {
+        super (radius, mass)
+        this.element = document.createElement('div')
+        this.element.classList.add('thing', 'circle')
+
+        display.append(this.element)
+    }
+
+    updateDisplay (scale: number) {
+        const scaler = display.offsetWidth * scale
+        this.element.style.width = (this.radius * 2 * scaler) + 'px'
+        this.element.style.height = this.element.style.width
+
+        this.element.style.left = (this.position.x * display.offsetWidth) + 'px'
+        this.element.style.bottom = (this.position.y * display.offsetWidth) + 'px'
+    }
+}
+
+let keydown: { [key: string]: boolean } = {}
 
 window.onkeydown = (event: KeyboardEvent) => {
-    keys[event.key] = true
+    keydown[event.code] = true
 }
 
-let game_box = new GameBox()
+window.onkeyup = (event: KeyboardEvent) => {
+    keydown[event.code] = false
+}
 
-let player = new Thing(6, 6, 0, 0)
-game_box.add(player)
-let physics_object = new Physics(1)
+const particle_system = new LinkedList <DisplayCircle> ()
+
+let player = new DisplayCircle (0.02, 1)
+player.position.x = 0
+player.position.y = 0
+particle_system.add(player)
+player.element.style.backgroundColor = 'green'
+
+let ball = new DisplayCircle (0.02, 2e8)
+ball.position.x = 0.5
+ball.position.y = 0.3
+particle_system.add(ball)
+
+const force = player.mass / 2
 
 let last_time = 0
 
+const gravity = true
+
 function gameLoop(time: number) {
-    const dt = time - last_time
+    let dt = time - last_time
     last_time = time
-    //
+    dt /= 1000
 
-    let force_mag = 10
-    let force = new Vector()
-
-    if (keys["ArrowRight"]) {
-        force.x += force_mag
+    if (keydown['ArrowUp']) {
+        // console.log('UP')
+        player.force.y += force
     }
-    if (keys["ArrowLeft"]) {
-        force.x -= force_mag
+    if (keydown['ArrowDown']) {
+        // console.log('DOWN')
+        player.force.y -= force
     }
-    if (keys["ArrowUp"]) {
-        force.y += force_mag
+    if (keydown['ArrowRight']) {
+        // console.log('RIGHT')
+        player.force.x += force
     }
-    if (keys["ArrowDown"]) {
-        force.y -= force_mag
-    }
-
-    physics_object.force.x = force.x
-    physics_object.force.y = force.y
-
-    let screen = game_box.rectangle
-    let screen_aspect_ratio = screen.width / screen.height
-
-    function scalePosition(position: Vector): Vector {
-        return new Vector(position.x, position.y * screen_aspect_ratio)
+    if (keydown['ArrowLeft']) {
+        // console.log('LEFT')
+        player.force.x -= force
     }
 
-    let player_position = scalePosition(physics_object.nextPosition(dt / 1000))
-    player.x = player_position.x
-    player.y = player_position.y
+    for (const particle_item of particle_system) {
+        const particle = particle_item.value
 
-    //
+        particle.integrate(dt)
+
+        const G = 6.67430e-11
+        for (const other_particle_item of particle_system) {
+            const other_particle = other_particle_item.value
+
+            if (particle !== other_particle) {
+                const d = Vector2D.sub(particle.position, other_particle.position)
+                const dn = d.normal()
+
+                const distance = d.magnitude()
+                const overlap = particle.radius + other_particle.radius - distance
+                const overlap_error = 0.001
+
+                if (overlap > overlap_error) {
+                    // console.log('collition overlap detected')
+                    const v1 = particle.velocity.dot(dn)
+                    const v2 = - other_particle.velocity.dot(dn)
+                    const vs = v1 + v2
+
+                    const push = Vector2D.scale(dn, overlap)
+                    if (vs === 0) {
+                        const mass_sum = particle.mass + other_particle.mass
+
+                        const particle_push = Vector2D.scale(push, particle.mass / mass_sum)
+                        const other_particle_push = Vector2D.scale(push, other_particle.mass / mass_sum)
+
+                        particle.position.add(particle_push)
+                        other_particle.position.sub(other_particle_push)
+                    }
+                    else {
+                        // console.log('velocity collision detected')
+                        const particle_push = Vector2D.scale(push, v1 / vs)
+                        const other_particle_push = Vector2D.scale(push, v2 / vs)
+
+                        particle.position.add(particle_push)
+                        other_particle.position.sub(other_particle_push)
+
+                        const mass_sum = particle.mass + other_particle.mass
+                        const n = Vector2D.sub(particle.position, other_particle.position).normal()
+                        const v_rel = Vector2D.sub(particle.velocity, other_particle.velocity).dot(n)
+                        const c1 = (2 * other_particle.mass * v_rel) / mass_sum
+                        const c2 = (2 * particle.mass * v_rel) / mass_sum
+
+                        particle.velocity.sub(Vector2D.scale(n, c1))
+                        other_particle.velocity.add(Vector2D.scale(n, c2))
+                    }
+                }
+                // else if (overlap > 0) {
+                //     console.log('collition touch detected')
+                // }
+
+                if (gravity) {
+                    const r3 = distance**3
+
+                    particle.force.x += (G * other_particle.mass * particle.mass * (other_particle.position.x - particle.position.x)) / r3;
+                    particle.force.y += (G * other_particle.mass * particle.mass * (other_particle.position.y - particle.position.y)) / r3;
+                }
+            }
+        }
+
+        particle.updateDisplay(1)
+    }
+
     requestAnimationFrame(gameLoop)
 }
 

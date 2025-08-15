@@ -8,17 +8,26 @@ body {
     background-color: black;
     width: 100%;
     height: 100vh;
-    overflow: hidden;
-}
-
-game-box {
-    display: block;
-    width: 100%;
-    height: 100%;
-    background-color: black;
+    /* overflow: hidden; */
+    font-family: sans-serif;
     position: relative;
 }
 
-thing {
+#game {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* background-color: black; */
+    position: relative;
+    overflow: hidden;
+}
+
+.thing {
+    position: absolute;
+}
+
+.circle {
     background-color: white;
+    border-radius: 100%;
+    transform: translate(-50%, 50%);
 }
