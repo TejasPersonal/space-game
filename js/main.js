@@ -45,9 +45,11 @@ class Vector2D {
         return Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
     }
     distance(other) {
-        return Math.sqrt(Math.pow((other.x - this.x), 2)
-            +
-                Math.pow((other.y - this.y), 2));
+        return Math.sqrt(
+            Math.pow((other.x - this.x), 2)
+                +
+            Math.pow((other.y - this.y), 2)
+        );
     }
     normalize() {
         const mag = this.magnitude();
